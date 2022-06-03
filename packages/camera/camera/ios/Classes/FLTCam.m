@@ -72,6 +72,10 @@
 @property(assign, nonatomic) CMTime lastAudioSampleTime;
 @property(assign, nonatomic) CMTime videoTimeOffset;
 @property(assign, nonatomic) CMTime audioTimeOffset;
+@property(readwrite, nonatomic) BOOL restartStartTime;
+@property(readwrite, nonatomic) CMTime startTime;
+@property(readwrite, nonatomic) CMTime totalRecordingTime;
+
 @property(nonatomic) CMMotionManager *motionManager;
 @property AVAssetWriterInputPixelBufferAdaptor *videoAdaptor;
 /// All FLTCam's state access and capture session related operations should be on run on this queue.
@@ -468,7 +472,7 @@ NSString *const errorMethod = @"error";
       imageBuffer[@"sensorSensitivity"] = [NSNumber numberWithFloat:[_captureDevice ISO]];
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        eventSink(imageBuffer);
+        (imageBuffer);
       });
     }
   }
@@ -481,7 +485,7 @@ NSString *const errorMethod = @"error";
 
     CFRetain(sampleBuffer);
     CMTime currentSampleTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
-
+     
     if (_videoWriter.status != AVAssetWriterStatusWriting) {
       [_videoWriter startWriting];
       [_videoWriter startSessionAtSourceTime:currentSampleTime];
@@ -505,6 +509,15 @@ NSString *const errorMethod = @"error";
 
       CVPixelBufferRef nextBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
       CMTime nextSampleTime = CMTimeSubtract(_lastVideoSampleTime, _videoTimeOffset);
+        if(_restartStartTime){
+            _restartStartTime = NO;
+            _startTime = nextSampleTime;
+          
+        }
+            _totalRecordingTime = CMTimeSubtract(nextSampleTime, _startTime);
+            NSLog(@"seconds = %f", CMTimeGetSeconds(_totalRecordingTime));
+        
+       
       [_videoAdaptor appendPixelBuffer:nextBuffer withPresentationTime:nextSampleTime];
     } else {
       CMTime dur = CMSampleBufferGetDuration(sampleBuffer);
@@ -635,6 +648,8 @@ NSString *const errorMethod = @"error";
     _isRecordingPaused = NO;
     _videoTimeOffset = CMTimeMake(0, 1);
     _audioTimeOffset = CMTimeMake(0, 1);
+      _totalRecordingTime = CMTimeMake(0,1);
+      _restartStartTime = YES;
     _videoIsDisconnected = NO;
     _audioIsDisconnected = NO;
     [result sendSuccess];
@@ -944,9 +959,12 @@ NSString *const errorMethod = @"error";
 }
 
 - (void)getMaxZoomLevelWithResult:(FLTThreadSafeFlutterResult *)result {
-  CGFloat maxZoomFactor = [self getMaxAvailableZoomFactor];
-
-  [result sendSuccessWithData:[NSNumber numberWithFloat:maxZoomFactor]];
+//  CGFloat maxZoomFactor = [self getMaxAvailableZoomFactor];
+    NSTimeInterval timeStamp = [[NSDate date] timeIntervalSince1970];
+    // NSTimeInterval is defined as double
+    NSNumber *timeStampObj = [NSNumber numberWithDouble: timeStamp];
+    NSLog(@"getCurrentTime iOS%f", [timeStampObj floatValue]);
+      [result sendSuccessWithData:[NSNumber numberWithFloat:CMTimeGetSeconds(_totalRecordingTime)]];
 }
 
 - (void)getMinZoomLevelWithResult:(FLTThreadSafeFlutterResult *)result {

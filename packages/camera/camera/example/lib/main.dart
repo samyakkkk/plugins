@@ -830,6 +830,12 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
 
   void onStopButtonPressed() {
     stopVideoRecording().then((XFile? file) {
+      VideoPlayerController controller =
+          VideoPlayerController.file(File(file!.path));
+      controller.initialize().then((_) {
+        print("Value Duration ${controller.value.duration}");
+      });
+
       if (mounted) {
         setState(() {});
       }
@@ -892,7 +898,14 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     }
 
     try {
-      await cameraController.startVideoRecording();
+      await cameraController.startVideoRecording().then((value) async {
+        await Future<void>.delayed(Duration(seconds: 2));
+        print(
+            "getCurrentTime started ${DateTime.now().millisecondsSinceEpoch}");
+        print(await cameraController.getMaxZoomLevel());
+        print(
+            "getCurrentTime completed ${DateTime.now().millisecondsSinceEpoch}");
+      });
     } on CameraException catch (e) {
       _showCameraException(e);
       return;
